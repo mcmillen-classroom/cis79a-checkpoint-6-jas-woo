@@ -4,6 +4,8 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.FileProvider;
 
 import android.content.Intent;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
@@ -11,6 +13,7 @@ import android.provider.MediaStore;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ImageView;
+import android.widget.Toast;
 
 import java.io.File;
 import java.io.IOException;
@@ -22,6 +25,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
     private ImageView mImageView;
     private Button mCameraButton;
+    private Button mShareButton;
+    private Button mEmailButton;
 
     static final int REQUEST_IMAGE_CAPTURE = 1;
 
@@ -35,9 +40,12 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
         mImageView = (ImageView) findViewById(R.id.image_view);
         mCameraButton = (Button) findViewById(R.id.camera_button);
+        mShareButton = (Button) findViewById(R.id.share_button);
+        mEmailButton = (Button) findViewById(R.id.email_button);
 
         mCameraButton.setOnClickListener(this);
-
+        mShareButton.setOnClickListener(this);
+        mEmailButton.setOnClickListener(this);
 
     }
 
@@ -45,9 +53,18 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     @Override
     public void onClick(View view)
     {
-        if (view.getId()==R.id.camera_button){
+        if (view.getId() == R.id.camera_button)
+        {
             dispatchTakePicturesIntent();
             galleryAddPics();
+        }
+        else if (view.getId() == R.id.share_button)
+        {
+            dispatchSharePicture();
+        }
+        else
+        {
+            dispatchEmailPicture();
         }
     }
 
@@ -75,12 +92,54 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
         }
     }
+    private void galleryAddPics()
+    {
+        Intent mediaScanIntent = new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE);
+        mediaScanIntent.setData(mCurrentPhotoUri);
+        this.sendBroadcast(mediaScanIntent);
+
+    }
+    private void dispatchSharePicture()
+    {
+        File image = new File(mCurrentPhotoUri.getPath());
+        Uri photoURI = FileProvider.getUriForFile(this, "com.example.android.fileprovider", image);
+
+        Intent shareIntent = new Intent();
+        shareIntent.setAction(Intent.ACTION_SEND);
+        shareIntent.putExtra(Intent.EXTRA_STREAM, photoURI);
+        shareIntent.setType("image/jpeg");
+
+        startActivity(Intent.createChooser(shareIntent, getResources().getText(R.string.share_pic)));
+    }
+    private void dispatchEmailPicture()
+    {
+        File image = new File(mCurrentPhotoUri.getPath());
+        Uri photoUri = FileProvider.getUriForFile(this,"com.example.android.fileprovider", image);
+
+        Intent emailIntent = new Intent();
+        emailIntent.setAction(Intent.ACTION_SENDTO);
+        emailIntent.setData(Uri.parse("mailto:"));
+        emailIntent.putExtra(Intent.EXTRA_SUBJECT, "Checks this pic't I just took't!");
+        emailIntent.putExtra(Intent.EXTRA_TEXT, "ALL PICS TOOK'T BY jas woo CAMERA APP, shorty!");
+        emailIntent.putExtra(Intent.EXTRA_STREAM, photoUri);
+
+        if (emailIntent.resolveActivity(getPackageManager()) != null)
+        {
+            startActivity(emailIntent);
+        }
+        else
+        {
+            Toast.makeText(this, "I'm sure you figured that there is no email app configured, in case you didn't, now you knows.", Toast.LENGTH_LONG).show();
+        }
+    }
+
+
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data)
     {
        if (requestCode == REQUEST_IMAGE_CAPTURE && resultCode == RESULT_OK)
        {
-            mImageView.setImageURI(mCurrentPhotoUri);
+            setPic();
        }
     }
     private File createImageFile() throws IOException
@@ -93,13 +152,25 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         mCurrentPhotoUri = Uri.fromFile(image);
         return image;
     }
-    private void galleryAddPics()
+    private void setPic()
     {
-        Intent mediaScanIntent = new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE);
-        mediaScanIntent.setData(mCurrentPhotoUri);
-        this.sendBroadcast(mediaScanIntent);
+        int targetW = mImageView.getWidth();
+        int targetH = mImageView.getHeight();
 
+        BitmapFactory.Options bmOptions = new BitmapFactory.Options();
+        bmOptions.inJustDecodeBounds = true;
+        BitmapFactory.decodeFile(mCurrentPhotoUri.getPath(), bmOptions);
+        int photoW = bmOptions.outWidth;
+        int photoH = bmOptions.outHeight;
+
+        int scaleFactor = Math.min(photoW/targetW, photoH/targetH);
+
+        bmOptions.inJustDecodeBounds = false;
+        bmOptions.inSampleSize = scaleFactor;
+        bmOptions.inPurgeable = true;
+
+        Bitmap bitmap = BitmapFactory.decodeFile(mCurrentPhotoUri.getPath(), bmOptions);
+        mImageView.setImageBitmap(bitmap);
     }
-
 
 }
