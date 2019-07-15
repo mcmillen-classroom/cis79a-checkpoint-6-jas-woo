@@ -117,11 +117,12 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         Uri photoUri = FileProvider.getUriForFile(this,"com.example.android.fileprovider", image);
 
         Intent emailIntent = new Intent();
-        emailIntent.setAction(Intent.ACTION_SENDTO);
+        emailIntent.setAction(Intent.ACTION_SEND);
         emailIntent.setData(Uri.parse("mailto:"));
         emailIntent.putExtra(Intent.EXTRA_SUBJECT, "Checks this pic't I just took't!");
         emailIntent.putExtra(Intent.EXTRA_TEXT, "ALL PICS TOOK'T BY jas woo CAMERA APP, shorty!");
         emailIntent.putExtra(Intent.EXTRA_STREAM, photoUri);
+        emailIntent.setType("text/plain");
 
         if (emailIntent.resolveActivity(getPackageManager()) != null)
         {
